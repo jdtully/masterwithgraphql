@@ -1,0 +1,57 @@
+version: "3.3"
+services:
+  pg_master:
+    build: ./master
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=Laminar1
+      - POSTGRES_DB=laminardb
+      - PG_REP_USER=rep
+      - PG_REP_PASSWORD=123456
+    ports:
+      - 5432:5432
+    networks:
+      default:
+        aliases:
+          - pg_cluster
+  pg_slave:
+    build: ./slave
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=Laminar1
+      - POSTGRES_DB=laminardb
+      - PG_REP_USER=rep
+      - PG_REP_PASSWORD=123456
+      - PG_MASTER_HOST=pg_master
+    networks:
+      default:
+        aliases:
+          - pg_cluster
+
+  graphql:
+    container_name: master-graphql
+    restart: always
+    image: master-graphql
+    build:
+      context: ./graphql
+    env_file:
+      - ./.env
+    depends_on:
+      - pg_master
+    ports:
+      - 5433:5433
+    command:
+      [
+        "--connection",
+        "${DATABASE_URL}",
+        "--port",
+        "5433",
+        "--schema",
+        "public",
+        "--append-plugins",
+        "postgraphile-plugin-connection-filter",
+      ]
+volumes:
+  pg_data:
